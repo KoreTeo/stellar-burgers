@@ -1,24 +1,28 @@
-import { FC, useMemo } from 'react';
+import { FC, useMemo, useCallback } from 'react';
 import { TConstructorIngredient } from '@utils-types';
 import { BurgerConstructorUI } from '@ui';
+import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from '../../services/store';
+import {
+  clearConstructor,
+  getConstructorState
+} from '../../services/slices/constructorSlice';
+import {
+  getNewOrderState,
+  newOrderThunk,
+  clearOrder
+} from '../../services/slices/newOrderSlice';
+import { getUserIsAuth } from '../../services/slices/userSlice';
 
 export const BurgerConstructor: FC = () => {
-  /** TODO: взять переменные constructorItems, orderRequest и orderModalData из стора */
-  const constructorItems = {
-    bun: {
-      price: 0
-    },
-    ingredients: []
-  };
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const orderRequest = false;
+  const userIsAuth = useSelector(getUserIsAuth);
+  const constructorItems = useSelector(getConstructorState);
 
-  const orderModalData = null;
-
-  const onOrderClick = () => {
-    if (!constructorItems.bun || orderRequest) return;
-  };
-  const closeOrderModal = () => {};
+  const { orderRequest, order } = useSelector(getNewOrderState);
+  const orderModalData = order;
 
   const price = useMemo(
     () =>
@@ -30,7 +34,28 @@ export const BurgerConstructor: FC = () => {
     [constructorItems]
   );
 
-  return null;
+  const onOrderClick = useCallback(() => {
+    if (!constructorItems.bun || orderRequest) return;
+
+    if (!userIsAuth) {
+      navigate('/login');
+    }
+
+    if (constructorItems.bun && constructorItems.ingredients.length > 0) {
+      const dataToOrder = [
+        constructorItems.bun._id,
+        ...constructorItems.ingredients.map((ingredient) => ingredient._id),
+        constructorItems.bun._id
+      ];
+      dispatch(newOrderThunk(dataToOrder));
+    }
+  }, [userIsAuth, constructorItems, dispatch, navigate]);
+
+  const closeOrderModal = () => {
+    dispatch(clearOrder());
+    dispatch(clearConstructor());
+    navigate('/');
+  };
 
   return (
     <BurgerConstructorUI
