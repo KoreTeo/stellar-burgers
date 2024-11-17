@@ -12,13 +12,13 @@ import {
   newOrderThunk,
   clearOrder
 } from '../../services/slices/newOrderSlice';
-import { getUserIsAuth } from '../../services/slices/userSlice';
+import { getUser } from '../../services/slices/userSlice';
 
 export const BurgerConstructor: FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const userIsAuth = useSelector(getUserIsAuth);
+  const user = useSelector(getUser);
   const constructorItems = useSelector(getConstructorState);
 
   const { orderRequest, order } = useSelector(getNewOrderState);
@@ -37,11 +37,15 @@ export const BurgerConstructor: FC = () => {
   const onOrderClick = useCallback(() => {
     if (!constructorItems.bun || orderRequest) return;
 
-    if (!userIsAuth) {
+    if (!user) {
       navigate('/login');
     }
 
-    if (constructorItems.bun && constructorItems.ingredients.length > 0) {
+    if (
+      user &&
+      constructorItems.bun &&
+      constructorItems.ingredients.length > 0
+    ) {
       const dataToOrder = [
         constructorItems.bun._id,
         ...constructorItems.ingredients.map((ingredient) => ingredient._id),
@@ -49,7 +53,7 @@ export const BurgerConstructor: FC = () => {
       ];
       dispatch(newOrderThunk(dataToOrder));
     }
-  }, [userIsAuth, constructorItems, dispatch, navigate]);
+  }, [user, constructorItems, dispatch, navigate]);
 
   const closeOrderModal = () => {
     dispatch(clearOrder());

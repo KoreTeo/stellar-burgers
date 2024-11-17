@@ -37,13 +37,11 @@ export const checkUserAuthThunk = createAsyncThunk(
 export const logoutUserThunk = createAsyncThunk(
   'user/logoutUser',
   (_, { dispatch }) => {
-    logoutApi()
-      .then(() => {
-        localStorage.clear();
-        deleteCookie('accessToken');
-        dispatch(userLogout());
-      })
-      .catch(() => {});
+    logoutApi().then(() => {
+      localStorage.clear();
+      deleteCookie('accessToken');
+      dispatch(userLogout());
+    });
   }
 );
 
