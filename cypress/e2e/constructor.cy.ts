@@ -1,132 +1,59 @@
-describe('Проверка функциональности конструктора бургера', () => {
-  const url = 'http://localhost:4000';
+import { BurgerIngredientsPage } from '../support/pages/BurgerIngredientsPage';
+import { BurgerConstructorPage } from '../support/pages/BurgerConstructorPage';
+import { ModalPage } from '../support/pages/ModalPage';
+import { AppPage } from '../support/pages/AppPage';
 
-  it('Сервер должен быть доступен по адресу: localhost:4000', () => {
-    cy.visit(url);
-  });
-
+describe('Stellar Burgers – e2e тесты с Page Object Model', () => {
   beforeEach(() => {
-    cy.intercept('GET', 'api/ingredients', (req) => {
-      req.reply({
-        fixture: 'ingredients.json'
-      });
-    }).as('getIngredients');
-
-    cy.intercept('GET', 'api/auth/user', {
-      fixture: 'user.json'
-    }).as('getUser');
-
-    cy.setCookie('accessToken', 'mockAccessToken');
-    localStorage.setItem('refreshToken', 'mockRefreshToken');
-
-    cy.visit(url);
+    cy.intercept('GET', 'api/ingredients', { fixture: 'ingredients.json' }).as(
+      'getIngredients'
+    );
+    AppPage.loginAsUser();
+    cy.wait('@getIngredients');
   });
 
   afterEach(() => {
-    cy.setCookie('accessToken', '');
-    localStorage.setItem('refreshToken', '');
+    cy.clearCookies();
+    localStorage.clear();
   });
 
-  describe('Тестирование работы модальных окон', () => {
-    beforeEach(() => {
-      cy.get('[data-cy=ingredients-category]')
-        .find('li')
-        .first()
-        .as('ingredient');
-    });
+  it('TC-SB-01,02 – Открытие и закрытие модалки ингредиента', () => {
+    BurgerIngredientsPage.getIngredientCard('Краторная булка N-200i').click();
+    ModalPage.getModal().should('be.visible');
+    cy.contains('Детали ингредиента').should('be.visible');
 
-    it('открытие модального окна ингредиента', () => {
-      cy.get('[data-cy=modal]').should('not.exist');
-      cy.get('@ingredient').click();
-      cy.get('[data-cy=modal]').should('be.visible');
-      cy.contains('Детали ингредиента').should('exist');
-    });
-    it('закрытие по клику на крестик', () => {
-      cy.get('@ingredient').click();
-      cy.get('[data-cy=modal]').should('be.visible');
-      cy.get('[data-cy=close-button]').click();
-      cy.get('[data-cy=modal]').should('not.exist');
-    });
-    it('закрытие по клику на оверлей', () => {
-      cy.get('@ingredient').click();
-      cy.get('[data-cy=modal]').should('be.visible');
-      cy.get('[data-cy=overlay]').click({ force: true });
-      cy.get('[data-cy=modal]').should('not.exist');
-    });
+    ModalPage.getCloseButton().click();
+    ModalPage.getModal().should('not.exist');
   });
 
-  describe('Создание заказа', () => {
-    describe('Добавление ингредиентов в конструктор бургера', () => {
-      it('Добавление булки', () => {
-        cy.get('div').contains('Выберите булки').should('exist');
-        const buttonAddBun = cy
-          .get('h3')
-          .contains('Булки')
-          .next('ul')
-          .contains('Добавить');
-        buttonAddBun.click();
-        cy.get('div').contains('Выберите булки').should('not.exist');
-      });
+  it('TC-SB-03,04 – Добавление ингредиентов в конструктор', () => {
+    BurgerIngredientsPage.getAddButtonInCategory('Булки').click();
+    BurgerConstructorPage.getBunPlaceholder().should('not.exist');
 
-      it('Добавление начинки', () => {
-        cy.get('div').contains('Выберите начинку').should('exist');
-        const buttonAddMain = cy
-          .get('h3')
-          .contains('Начинки')
-          .next('ul')
-          .contains('Добавить');
-        buttonAddMain.click();
-        cy.get('div').contains('Выберите начинку').should('not.exist');
-      });
-      it('Добавление соусов', () => {
-        cy.get('div').contains('Выберите начинку').should('exist');
-        const buttonAddSauce = cy
-          .get('h3')
-          .contains('Соусы')
-          .next('ul')
-          .contains('Добавить');
-        buttonAddSauce.click();
-        cy.get('div').contains('Выберите начинку').should('not.exist');
-      });
-    });
+    BurgerIngredientsPage.getAddButtonInCategory('Соусы').click();
+    BurgerIngredientsPage.getAddButtonInCategory('Начинки').click();
+    BurgerConstructorPage.getMainPlaceholder().should('not.exist');
+  });
 
-    it('Оформление заказа', () => {
-      cy.intercept('POST', 'api/orders', {
-        fixture: 'order.json'
-      }).as('postOrders');
+  it('TC-SB-05,06 – Полный сценарий оформления заказа', () => {
+    cy.intercept('POST', 'api/orders', { fixture: 'order.json' }).as(
+      'postOrder'
+    );
 
-      cy.get('[data-cy=modal]').should('not.exist');
+    BurgerIngredientsPage.getAddButtonInCategory('Булки').click();
+    BurgerIngredientsPage.getAddButtonInCategory('Начинки').click();
+    BurgerIngredientsPage.getAddButtonInCategory('Соусы').click();
 
-      const buttonAddBun = cy
-        .get('h3')
-        .contains('Булки')
-        .next('ul')
-        .contains('Добавить');
-      const buttonAddMain = cy
-        .get('h3')
-        .contains('Начинки')
-        .next('ul')
-        .contains('Добавить');
-      const buttonAddSauce = cy
-        .get('h3')
-        .contains('Соусы')
-        .next('ul')
-        .contains('Добавить');
-      buttonAddBun.click();
-      buttonAddMain.click();
-      buttonAddSauce.click();
-      const buttonMakeOrder = cy.contains('Оформить заказ');
-      buttonMakeOrder.click();
+    BurgerConstructorPage.getOrderButton().click();
 
-      cy.get('[data-cy=modal]').should('be.visible');
-      cy.contains('60185').should('exist');
+    cy.wait('@postOrder');
+    ModalPage.getModal().should('be.visible');
+    ModalPage.getOrderNumber().should('be.visible');
 
-      cy.get('[data-cy=close-button]').click();
-      cy.get('[data-cy=modal]').should('not.exist');
-      cy.contains('60185').should('not.exist');
+    ModalPage.getCloseButton().click();
+    ModalPage.getModal().should('not.exist');
 
-      cy.contains('Выберите булки').should('exist');
-      cy.contains('Выберите начинку').should('exist');
-    });
+    BurgerConstructorPage.getBunPlaceholder().should('be.visible');
+    BurgerConstructorPage.getMainPlaceholder().should('be.visible');
   });
 });
